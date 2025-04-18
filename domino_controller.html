@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Domino Machine Controller</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        .status {
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .control-panel {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .d-pad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 10px;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+        .d-pad button {
+            padding: 15px;
+            font-size: 18px;
+            border: none;
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .d-pad button:hover {
+            background-color: #45a049;
+        }
+        .d-pad button:active {
+            background-color: #3e8e41;
+        }
+        .settings {
+            margin-top: 20px;
+        }
+        .action-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .action-buttons button {
+            padding: 12px;
+            font-size: 16px;
+            border: none;
+            background-color: #2196F3;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .action-buttons button:hover {
+            background-color: #0b7dda;
+        }
+        .steering-control {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .steering-control input {
+            width: 100%;
+            margin: 10px 0;
+        }
+        .connect-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: none;
+            background-color: #ff9800;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        .connect-btn:hover {
+            background-color: #e68a00;
+        }
+        .indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 5px;
+            background-color: #f44336;
+        }
+        .connected {
+            background-color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <h1>Domino Machine Controller</h1>
+    
+    <div class="status">
+        <p><span class="indicator" id="connectionIndicator"></span> 
+            <span id="connectionStatus">Disconnected</span></p>
+        <p>Dominos remaining: <span id="dominosCount">-</span></p>
+        <p>Firebreak mode: <span id="firebreakStatus">Off</span></p>
+        <p>Steering angle: <span id="steeringAngleValue">90°</span></p>
+    </div>
+
+    <button id="connectBtn" class="connect-btn">Connect to Domino Machine</button>
+    
+    <div class="control-panel">
+        <div class="d-pad">
+            <button id="btnEmpty"></button>
+            <button id="btnForward">↑</button>
+            <button id="btnEmpty2"></button>
+            
+            <button id="btnLeft">←</button>
+            <button id="btnStop">■</button>
+            <button id="btnRight">→</button>
+            
+            <button id="btnEmpty3"></button>
+            <button id="btnBackward">↓</button>
+            <button id="btnEmpty4"></button>
+        </div>
+        
+        <div class="steering-control">
+            <label for="steeringSlider">Steering (0-180°):</label>
+            <input type="range" id="steeringSlider" min="0" max="180" value="90">
+        </div>
+        
+        <div class="action-buttons">
+            <button id="btnCarousel">Rotate Carousel</button>
+            <button id="btnFirebreak" data-state="off">Toggle Firebreak</button>
+        </div>
+    </div>
+
+    <script>
+        let bluetoothDevice;
+        let bluetoothCharacteristic;
+        let isConnected = false;
+        let dominosRemaining = 0;
+        let firebreakMode = false;
+        let steeringAngle = 90;
+
+        // Command codes - must match Arduino firmware
+        const CMD_FORWARD = 'F';
+        const CMD_BACKWARD = 'B';
+        const CMD_LEFT = 'L';
+        const CMD_RIGHT = 'R';
+        const CMD_STOP = 'S';
+        const CMD_CAROUSEL = 'C';
+        const CMD_FIREBREAK_ON = 'O';
+        const CMD_FIREBREAK_OFF = 'X';
+        const CMD_STEERING = 'T';
+        
+        // Bluetooth UUIDs - must match HC-05/HC-06 module
+        const BLUETOOTH_SERVICE_UUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
+        const BLUETOOTH_CHARACTERISTIC_UUID = '0000ffe1-0000-1000-8000-00805f9b34fb';
+
+        // Add debug flag to enable console logs
+        const DEBUG_MODE = true;
+
+        document.getElementById('connectBtn').addEventListener('click', connectToDevice);
+        document.getElementById('btnForward').addEventListener('mousedown', () => sendCommand(CMD_FORWARD));
+        document.getElementById('btnBackward').addEventListener('mousedown', () => sendCommand(CMD_BACKWARD));
+        document.getElementById('btnLeft').addEventListener('mousedown', () => sendCommand(CMD_LEFT));
+        document.getElementById('btnRight').addEventListener('mousedown', () => sendCommand(CMD_RIGHT));
+        document.getElementById('btnStop').addEventListener('mousedown', () => sendCommand(CMD_STOP));
+        document.getElementById('btnCarousel').addEventListener('click', () => sendCommand(CMD_CAROUSEL));
+        document.getElementById('btnFirebreak').addEventListener('click', toggleFirebreak);
+        
+        const steeringSlider = document.getElementById('steeringSlider');
+        steeringSlider.addEventListener('change', function() {
+            steeringAngle = parseInt(this.value);
+            document.getElementById('steeringAngleValue').textContent = steeringAngle + '°';
+            sendSteeringCommand(steeringAngle);
+        });
+
+        function toggleFirebreak() {
+            const btnFirebreak = document.getElementById('btnFirebreak');
+            const currentState = btnFirebreak.getAttribute('data-state');
+            
+            if (currentState === 'off') {
+                sendCommand(CMD_FIREBREAK_ON);
+                btnFirebreak.setAttribute('data-state', 'on');
+                btnFirebreak.textContent = 'Disable Firebreak';
+            } else {
+                sendCommand(CMD_FIREBREAK_OFF);
+                btnFirebreak.setAttribute('data-state', 'off');
+                btnFirebreak.textContent = 'Enable Firebreak';
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            isConnected = connected;
+            const indicator = document.getElementById('connectionIndicator');
+            const status = document.getElementById('connectionStatus');
+            
+            if (connected) {
+                indicator.classList.add('connected');
+                status.textContent = 'Connected';
+            } else {
+                indicator.classList.remove('connected');
+                status.textContent = 'Disconnected';
+            }
+        }
+
+        function updateDominosCount(count) {
+            dominosRemaining = count;
+            document.getElementById('dominosCount').textContent = count;
+        }
+
+        function updateFirebreakStatus(enabled) {
+            firebreakMode = enabled;
+            document.getElementById('firebreakStatus').textContent = enabled ? 'On' : 'Off';
+            
+            const btnFirebreak = document.getElementById('btnFirebreak');
+            if (enabled) {
+                btnFirebreak.setAttribute('data-state', 'on');
+                btnFirebreak.textContent = 'Disable Firebreak';
+            } else {
+                btnFirebreak.setAttribute('data-state', 'off');
+                btnFirebreak.textContent = 'Enable Firebreak';
+            }
+        }
+
+        async function connectToDevice() {
+            try {
+                if (DEBUG_MODE) console.log('Requesting Bluetooth Device...');
+                bluetoothDevice = await navigator.bluetooth.requestDevice({
+                    filters: [
+                        { services: [BLUETOOTH_SERVICE_UUID] },
+                        { namePrefix: 'HC-05' },
+                        { namePrefix: 'HC-06' }
+                    ],
+                    optionalServices: [BLUETOOTH_SERVICE_UUID]
+                });
+                
+                if (DEBUG_MODE) console.log('Connected to device:', bluetoothDevice.name);
+                
+                bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
+                
+                if (DEBUG_MODE) console.log('Connecting to GATT Server...');
+                const server = await bluetoothDevice.gatt.connect();
+                
+                if (DEBUG_MODE) console.log('Getting Service...');
+                const service = await server.getPrimaryService(BLUETOOTH_SERVICE_UUID);
+                
+                if (DEBUG_MODE) console.log('Getting Characteristic...');
+                bluetoothCharacteristic = await service.getCharacteristic(BLUETOOTH_CHARACTERISTIC_UUID);
+                
+                // Enable notifications to receive data from Arduino
+                await bluetoothCharacteristic.startNotifications();
+                bluetoothCharacteristic.addEventListener('characteristicvaluechanged', handleNotification);
+                
+                updateConnectionStatus(true);
+                if (DEBUG_MODE) console.log('Ready to communicate with the device!');
+                
+                // Request initial status
+                sendCommand(CMD_STOP);
+            } catch (error) {
+                console.error('Connection error:', error);
+                alert('Error connecting to device: ' + error.message);
+                updateConnectionStatus(false);
+            }
+        }
+
+        function onDisconnected() {
+            if (DEBUG_MODE) console.log('Device disconnected');
+            updateConnectionStatus(false);
+        }
+
+        function handleNotification(event) {
+            const value = new TextDecoder().decode(event.target.value);
+            if (DEBUG_MODE) console.log('Received data:', value);
+            
+            // Parse the status message from Arduino
+            // Format: S:154,F:0,A:90
+            // (Dominoes remaining, Firebreak mode, Steering angle)
+            
+            if (value.startsWith('S:')) {
+                const parts = value.split(',');
+                
+                // Extract dominoes count
+                const dominosPart = parts[0];
+                if (dominosPart && dominosPart.startsWith('S:')) {
+                    const count = parseInt(dominosPart.substring(2));
+                    if (!isNaN(count)) {
+                        updateDominosCount(count);
+                    }
+                }
+                
+                // Extract firebreak mode
+                const firebreakPart = parts[1];
+                if (firebreakPart && firebreakPart.startsWith('F:')) {
+                    const mode = firebreakPart.substring(2) === '1';
+                    updateFirebreakStatus(mode);
+                }
+                
+                // Extract steering angle
+                const steeringPart = parts[2];
+                if (steeringPart && steeringPart.startsWith('A:')) {
+                    const angle = parseInt(steeringPart.substring(2));
+                    if (!isNaN(angle)) {
+                        steeringAngle = angle;
+                        document.getElementById('steeringAngleValue').textContent = angle + '°';
+                        document.getElementById('steeringSlider').value = angle;
+                    }
+                }
+            }
+        }
+
+        async function sendCommand(command) {
+            if (!isConnected || !bluetoothCharacteristic) {
+                console.warn('Not connected to device');
+                return;
+            }
+            
+            try {
+                if (DEBUG_MODE) console.log('Sending command:', command);
+                const encoder = new TextEncoder();
+                await bluetoothCharacteristic.writeValue(encoder.encode(command));
+            } catch (error) {
+                console.error('Error sending command:', error);
+            }
+        }
+
+        async function sendSteeringCommand(angle) {
+            if (!isConnected || !bluetoothCharacteristic) {
+                console.warn('Not connected to device');
+                return;
+            }
+            
+            try {
+                // Format the angle as three digits (e.g., 090 for 90°)
+                const formattedAngle = angle.toString().padStart(3, '0');
+                const command = CMD_STEERING + formattedAngle;
+                
+                if (DEBUG_MODE) console.log('Sending steering command:', command);
+                const encoder = new TextEncoder();
+                await bluetoothCharacteristic.writeValue(encoder.encode(command));
+            } catch (error) {
+                console.error('Error sending steering command:', error);
+            }
+        }
+
+        // Check if Web Bluetooth is supported
+        if (!navigator.bluetooth) {
+            alert('Web Bluetooth is not supported in your browser. Please use Chrome, Edge, or another compatible browser.');
+            document.getElementById('connectBtn').disabled = true;
+        }
+    </script>
+</body>
+</html>

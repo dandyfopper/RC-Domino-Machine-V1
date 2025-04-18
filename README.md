@@ -1,14 +1,32 @@
-# Arduino Remote Controlled Domino Laying Machine - With Blynk Bluetooth Control
+# Arduino Remote Controlled Domino Laying Machine - With Web Bluetooth Control
 3D Printed
 
 How to 3D print and assemble your very own programmable and remote controllable automatic domino laying machine.
 
 Who likes knocking down absurdly long runs of dominoes? I do. Who doesn't like laying them all by hand. I don't. That's why I made this. 😊 
 
-I made a a detailed project video here: https://youtu.be/QsAplPLtriw 
+I made a detailed project video here: https://youtu.be/QsAplPLtriw 
 
-Using some basic electronics this machine can line up well spaced rows of wooden dominoes. You can drive it around corners, forwards and backwards - just don't drive into your already laid dominoes. You can enter a list of instructions to your robot via the Arduino IDE, upload with USB and then send it on it's way to follow your instructions, or you can open the phone app and drive it live via bluetooth.  
+Using some basic electronics this machine can line up well spaced rows of wooden dominoes. You can drive it around corners, forwards and backwards - just don't drive into your already laid dominoes. You can enter a list of instructions to your robot via the Arduino IDE, upload with USB and then send it on its way to follow your instructions, or you can control it live via Bluetooth using the web controller.
 
+## Updates (April 2025)
+
+This repository has been updated with a new version of the firmware and controller application:
+
+- **DominoMachine_V4.ino**: Updated firmware that uses standard Bluetooth communication instead of the deprecated Blynk app
+- **domino_controller.html**: A web-based controller that works with any modern browser that 
+### How to Use the New Web Controller
+
+1. Upload the `DominoMachine_V4.ino` firmware to your Arduino Uno
+2. Connect an HC-05 or HC-06 Bluetooth module to the Arduino (pins 12 & 13)
+3. Power on the Domino Machine
+4. Open `domino_controller.html` in a Chrome or Edge browser
+5. Click "Connect to Domino Machine" and select your Bluetooth device from the popup
+6. Control your Domino Machine using the intuitive interface:
+   - Use the directional pad to move the machine
+   - Adjust the steering angle with the slider
+   - Rotate carousel or toggle firebreak mode with the action buttons
+   - Monitor domino count and machine status in real-time
 
 ==========
 
@@ -34,7 +52,7 @@ Using some basic electronics this machine can line up well spaced rows of wooden
 
 ■ 1602 LCD Shield with keypad (x1) - https://geni.us/1602LCDKeypad 
 
-■ HM10 Bluetooth Module (x1) - https://geni.us/HM10Bluetooth 
+■ HC-05/HC-06 Bluetooth Module (x1) - https://geni.us/HC05Bluetooth
 
 ■ M3 and M5 Bolts  - https://geni.us/NutsAndBolts
 
@@ -46,17 +64,13 @@ M5x15mm (x2) M5x25mm (x3).  M3x
 
 ■ 4 Way Wire Connector (x1) - https://geni.us/WagoConnectors 
 
-■ Electrical ‘Hookup’ wire - https://geni.us/22AWGWire
+■ Electrical 'Hookup' wire - https://geni.us/22AWGWire
 
 ■ Filament for 3D printing:
    - Silky silver from Geeetech: https://geni.us/GeeetechSilkSilverPLA 
   - White PLA: https://geni.us/GeeetechWhitePLA
   
 ■ Velcro Cable Tidy (for domino ejector) - https://geni.us/VelcroCableTidy 
-
-
-
-
 
 ==========
 
