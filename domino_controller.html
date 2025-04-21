@@ -50,6 +50,7 @@
             color: white;
             border-radius: 5px;
             cursor: pointer;
+            transition: background-color 0.3s;
         }
         .d-pad button:hover {
             background-color: #45a049;
@@ -74,6 +75,7 @@
             color: white;
             border-radius: 5px;
             cursor: pointer;
+            transition: background-color 0.3s;
         }
         .action-buttons button:hover {
             background-color: #0b7dda;
@@ -97,6 +99,7 @@
             border-radius: 5px;
             cursor: pointer;
             margin-bottom: 10px;
+            transition: background-color 0.3s;
         }
         .connect-btn:hover {
             background-color: #e68a00;
@@ -112,6 +115,134 @@
         .connected {
             background-color: #4CAF50;
         }
+        
+        /* New styling for advanced features */
+        .advanced-panel {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .advanced-panel h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .checkbox-wrapper {
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+        }
+        
+        .checkbox-wrapper input[type="checkbox"] {
+            margin-right: 10px;
+        }
+        
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .preset-button {
+            padding: 10px;
+            font-size: 14px;
+            border: none;
+            background-color: #673AB7;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .preset-button:hover {
+            background-color: #5E35B1;
+        }
+        
+        .button-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .small-button {
+            padding: 10px;
+            font-size: 14px;
+            border: none;
+            background-color: #607D8B;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .small-button:hover {
+            background-color: #546E7A;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            background-color: #f1f1f1;
+            margin-right: 5px;
+            border-radius: 5px 5px 0 0;
+        }
+        
+        .tab.active {
+            background-color: #2196F3;
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        #debugLog {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            padding: 10px;
+            height: 150px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        
+        #debugLog p {
+            margin: 0;
+            padding: 2px 0;
+        }
+        
+        .version {
+            text-align: center;
+            font-size: 12px;
+            color: #888;
+            margin-top: 30px;
+        }
+        
+        @media (max-width: 480px) {
+            .d-pad {
+                max-width: 100%;
+            }
+            
+            .preset-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -123,34 +254,122 @@
         <p>Dominos remaining: <span id="dominosCount">-</span></p>
         <p>Firebreak mode: <span id="firebreakStatus">Off</span></p>
         <p>Steering angle: <span id="steeringAngleValue">90°</span></p>
+        <p>Position mode: <span id="positionModeStatus">Standard</span></p>
     </div>
 
     <button id="connectBtn" class="connect-btn">Connect to Domino Machine</button>
     
-    <div class="control-panel">
-        <div class="d-pad">
-            <button id="btnEmpty"></button>
-            <button id="btnForward">↑</button>
-            <button id="btnEmpty2"></button>
+    <div class="tabs">
+        <div class="tab active" data-tab="basic">Basic Control</div>
+        <div class="tab" data-tab="advanced">Advanced Features</div>
+        <div class="tab" data-tab="patterns">Pattern Presets</div>
+        <div class="tab" data-tab="debug">Debug</div>
+    </div>
+    
+    <div id="basicTab" class="tab-content active">
+        <div class="control-panel">
+            <div class="d-pad">
+                <button id="btnTurnLeft" title="Turn Forward + Left">↰</button>
+                <button id="btnForward">↑</button>
+                <button id="btnTurnRight" title="Turn Forward + Right">↱</button>
+                
+                <button id="btnLeft">←</button>
+                <button id="btnStop">■</button>
+                <button id="btnRight">→</button>
+                
+                <button id="btnEmpty3"></button>
+                <button id="btnBackward">↓</button>
+                <button id="btnEmpty4"></button>
+            </div>
             
-            <button id="btnLeft">←</button>
-            <button id="btnStop">■</button>
-            <button id="btnRight">→</button>
+            <div class="steering-control">
+                <label for="steeringSlider">Steering (0-180°):</label>
+                <input type="range" id="steeringSlider" min="0" max="180" value="90">
+            </div>
             
-            <button id="btnEmpty3"></button>
-            <button id="btnBackward">↓</button>
-            <button id="btnEmpty4"></button>
+            <div class="action-buttons">
+                <button id="btnCarousel">Rotate Carousel</button>
+                <button id="btnFirebreak" data-state="off">Toggle Firebreak</button>
+            </div>
         </div>
-        
-        <div class="steering-control">
-            <label for="steeringSlider">Steering (0-180°):</label>
-            <input type="range" id="steeringSlider" min="0" max="180" value="90">
+    </div>
+    
+    <div id="advancedTab" class="tab-content">
+        <div class="advanced-panel">
+            <h3>Advanced Controls</h3>
+            
+            <div class="checkbox-wrapper">
+                <input type="checkbox" id="precisePositioning">
+                <label for="precisePositioning">Precise Positioning Mode</label>
+            </div>
+            
+            <div class="button-row">
+                <button id="btnRotate180" class="small-button">Rotate 180°</button>
+                <button id="btnCalibrate" class="small-button">Calibrate</button>
+                <button id="btnEmergencyStop" class="small-button">Emergency Stop</button>
+            </div>
+            
+            <h3>Movement Settings</h3>
+            <div class="steering-control">
+                <label for="speedSlider">Speed (50-255):</label>
+                <input type="range" id="speedSlider" min="50" max="255" value="120">
+                <span id="speedValue">120</span>
+            </div>
+            
+            <div class="steering-control">
+                <label for="turnAmountSlider">Turn Amount (10-90°):</label>
+                <input type="range" id="turnAmountSlider" min="10" max="90" value="40">
+                <span id="turnAmountValue">40°</span>
+            </div>
         </div>
-        
-        <div class="action-buttons">
-            <button id="btnCarousel">Rotate Carousel</button>
-            <button id="btnFirebreak" data-state="off">Toggle Firebreak</button>
+    </div>
+    
+    <div id="patternsTab" class="tab-content">
+        <div class="advanced-panel">
+            <h3>Pattern Presets</h3>
+            <p>Click to run predefined domino patterns:</p>
+            
+            <div class="preset-buttons">
+                <button id="btnPatternStraightLine" class="preset-button">Straight Line (10)</button>
+                <button id="btnPatternZigZag" class="preset-button">Zig Zag</button>
+                <button id="btnPatternSpiral" class="preset-button">Spiral</button>
+                <button id="btnPatternCircle" class="preset-button">Circle</button>
+                <button id="btnPatternCustom" class="preset-button">Custom Pattern</button>
+                <button id="btnStopPattern" class="preset-button">Stop Pattern</button>
+            </div>
+            
+            <h3>Pattern Control</h3>
+            <div class="steering-control">
+                <label for="dominoCountSlider">Number of Dominos:</label>
+                <input type="range" id="dominoCountSlider" min="1" max="50" value="10">
+                <span id="dominoCountValue">10</span>
+            </div>
         </div>
+    </div>
+    
+    <div id="debugTab" class="tab-content">
+        <div class="advanced-panel">
+            <h3>Debug Information</h3>
+            
+            <div class="checkbox-wrapper">
+                <input type="checkbox" id="enableDebug" checked>
+                <label for="enableDebug">Enable Debug Logging</label>
+            </div>
+            
+            <div id="debugLog">
+                <p>Debug log initialized...</p>
+            </div>
+            
+            <div class="button-row">
+                <button id="btnClearLog" class="small-button">Clear Log</button>
+                <button id="btnTestConnection" class="small-button">Test Connection</button>
+                <button id="btnRefreshStatus" class="small-button">Refresh Status</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="version">
+        Domino Machine Controller v4.1 - April 2025
     </div>
 
     <script>
@@ -160,6 +379,9 @@
         let dominosRemaining = 0;
         let firebreakMode = false;
         let steeringAngle = 90;
+        let preciseMode = false;
+        let patternRunning = false;
+        let patternTimeout = null;
 
         // Command codes - must match Arduino firmware
         const CMD_FORWARD = 'F';
@@ -171,14 +393,20 @@
         const CMD_FIREBREAK_ON = 'O';
         const CMD_FIREBREAK_OFF = 'X';
         const CMD_STEERING = 'T';
+        const CMD_PRECISE_ON = 'P';
+        const CMD_PRECISE_OFF = 'N';
+        const CMD_SPEED = 'V';
+        const CMD_TURN_AMOUNT = 'A';
+        const CMD_EMERGENCY = 'E';
         
         // Bluetooth UUIDs - must match HC-05/HC-06 module
         const BLUETOOTH_SERVICE_UUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
         const BLUETOOTH_CHARACTERISTIC_UUID = '0000ffe1-0000-1000-8000-00805f9b34fb';
 
-        // Add debug flag to enable console logs
-        const DEBUG_MODE = true;
+        // Debug flag
+        let DEBUG_MODE = true;
 
+        // Add event listeners for all buttons
         document.getElementById('connectBtn').addEventListener('click', connectToDevice);
         document.getElementById('btnForward').addEventListener('mousedown', () => sendCommand(CMD_FORWARD));
         document.getElementById('btnBackward').addEventListener('mousedown', () => sendCommand(CMD_BACKWARD));
@@ -187,14 +415,287 @@
         document.getElementById('btnStop').addEventListener('mousedown', () => sendCommand(CMD_STOP));
         document.getElementById('btnCarousel').addEventListener('click', () => sendCommand(CMD_CAROUSEL));
         document.getElementById('btnFirebreak').addEventListener('click', toggleFirebreak);
+        document.getElementById('btnTurnLeft').addEventListener('mousedown', () => { sendCommand(CMD_LEFT); setTimeout(() => sendCommand(CMD_FORWARD), 100); });
+        document.getElementById('btnTurnRight').addEventListener('mousedown', () => { sendCommand(CMD_RIGHT); setTimeout(() => sendCommand(CMD_FORWARD), 100); });
         
+        // Add event listeners for advanced features
+        document.getElementById('precisePositioning').addEventListener('change', togglePreciseMode);
+        document.getElementById('btnEmergencyStop').addEventListener('click', emergencyStop);
+        document.getElementById('btnCalibrate').addEventListener('click', calibrateMachine);
+        document.getElementById('btnRotate180').addEventListener('click', rotate180);
+        document.getElementById('btnClearLog').addEventListener('click', clearDebugLog);
+        document.getElementById('btnTestConnection').addEventListener('click', testConnection);
+        document.getElementById('btnRefreshStatus').addEventListener('click', () => sendCommand(CMD_STOP));
+        document.getElementById('enableDebug').addEventListener('change', function() {
+            DEBUG_MODE = this.checked;
+            logDebug('Debug mode ' + (DEBUG_MODE ? 'enabled' : 'disabled'));
+        });
+        
+        // Pattern preset buttons
+        document.getElementById('btnPatternStraightLine').addEventListener('click', runStraightLinePattern);
+        document.getElementById('btnPatternZigZag').addEventListener('click', runZigZagPattern);
+        document.getElementById('btnPatternSpiral').addEventListener('click', runSpiralPattern);
+        document.getElementById('btnPatternCircle').addEventListener('click', runCirclePattern);
+        document.getElementById('btnPatternCustom').addEventListener('click', runCustomPattern);
+        document.getElementById('btnStopPattern').addEventListener('click', stopPattern);
+        
+        // Sliders
         const steeringSlider = document.getElementById('steeringSlider');
         steeringSlider.addEventListener('change', function() {
             steeringAngle = parseInt(this.value);
             document.getElementById('steeringAngleValue').textContent = steeringAngle + '°';
             sendSteeringCommand(steeringAngle);
         });
-
+        
+        const speedSlider = document.getElementById('speedSlider');
+        speedSlider.addEventListener('change', function() {
+            const speed = parseInt(this.value);
+            document.getElementById('speedValue').textContent = speed;
+            sendSpeedCommand(speed);
+        });
+        
+        const turnAmountSlider = document.getElementById('turnAmountSlider');
+        turnAmountSlider.addEventListener('change', function() {
+            const amount = parseInt(this.value);
+            document.getElementById('turnAmountValue').textContent = amount + '°';
+            sendTurnAmountCommand(amount);
+        });
+        
+        const dominoCountSlider = document.getElementById('dominoCountSlider');
+        dominoCountSlider.addEventListener('input', function() {
+            document.getElementById('dominoCountValue').textContent = this.value;
+        });
+        
+        // Tab navigation
+        const tabs = document.querySelectorAll('.tab');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.getAttribute('data-tab');
+                activateTab(tabName);
+            });
+        });
+        
+        function activateTab(tabName) {
+            // Remove active class from all tabs and content
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Add active class to selected tab and content
+            document.querySelector(`.tab[data-tab="${tabName}"]`).classList.add('active');
+            
+            const contentId = tabName + 'Tab';
+            document.getElementById(contentId).classList.add('active');
+        }
+        
+        function togglePreciseMode() {
+            preciseMode = document.getElementById('precisePositioning').checked;
+            document.getElementById('positionModeStatus').textContent = preciseMode ? 'Precise' : 'Standard';
+            sendCommand(preciseMode ? CMD_PRECISE_ON : CMD_PRECISE_OFF);
+            logDebug(`Precise positioning mode ${preciseMode ? 'enabled' : 'disabled'}`);
+        }
+        
+        function emergencyStop() {
+            sendCommand(CMD_EMERGENCY);
+            stopPattern();
+            logDebug('Emergency stop activated');
+        }
+        
+        function calibrateMachine() {
+            logDebug('Starting machine calibration...');
+            sendCommand(CMD_CAROUSEL);
+            setTimeout(() => {
+                sendCommand(CMD_STOP);
+                steeringSlider.value = 90;
+                document.getElementById('steeringAngleValue').textContent = '90°';
+                sendSteeringCommand(90);
+                logDebug('Calibration complete');
+            }, 2000);
+        }
+        
+        function rotate180() {
+            logDebug('Performing 180° rotation');
+            // Sequence to turn machine 180 degrees
+            sendCommand(CMD_LEFT);
+            setTimeout(() => {
+                sendCommand(CMD_BACKWARD);
+                setTimeout(() => {
+                    sendCommand(CMD_STOP);
+                    logDebug('Rotation complete');
+                }, 1500);
+            }, 100);
+        }
+        
+        function runStraightLinePattern() {
+            if (patternRunning) return;
+            stopPattern();
+            
+            const count = parseInt(dominoCountSlider.value);
+            logDebug(`Starting straight line pattern with ${count} dominos`);
+            
+            patternRunning = true;
+            sendSteeringCommand(90);
+            
+            let i = 0;
+            function layNextDomino() {
+                if (i < count && patternRunning) {
+                    sendCommand(CMD_FORWARD);
+                    i++;
+                    logDebug(`Placing domino ${i} of ${count}`);
+                    patternTimeout = setTimeout(layNextDomino, 1500);
+                } else {
+                    patternRunning = false;
+                    logDebug('Pattern complete');
+                }
+            }
+            
+            layNextDomino();
+        }
+        
+        function runZigZagPattern() {
+            if (patternRunning) return;
+            stopPattern();
+            
+            const count = parseInt(dominoCountSlider.value);
+            logDebug(`Starting zig-zag pattern with ${count} dominos`);
+            
+            patternRunning = true;
+            let i = 0;
+            let goingRight = true;
+            
+            function layNextDomino() {
+                if (i < count && patternRunning) {
+                    // Alternate between right and left
+                    if (goingRight) {
+                        sendSteeringCommand(70);
+                    } else {
+                        sendSteeringCommand(110);
+                    }
+                    
+                    setTimeout(() => {
+                        sendCommand(CMD_FORWARD);
+                        i++;
+                        goingRight = !goingRight;
+                        logDebug(`Placing zigzag domino ${i} of ${count}`);
+                        patternTimeout = setTimeout(layNextDomino, 1500);
+                    }, 300);
+                } else {
+                    patternRunning = false;
+                    sendSteeringCommand(90);
+                    logDebug('Pattern complete');
+                }
+            }
+            
+            layNextDomino();
+        }
+        
+        function runSpiralPattern() {
+            if (patternRunning) return;
+            stopPattern();
+            
+            const count = parseInt(dominoCountSlider.value);
+            logDebug(`Starting spiral pattern with ${count} dominos`);
+            
+            patternRunning = true;
+            let i = 0;
+            let angle = 90;
+            
+            function layNextDomino() {
+                if (i < count && patternRunning) {
+                    // Gradually decrease angle to create spiral
+                    angle = Math.max(60, 90 - (i * 3));
+                    sendSteeringCommand(angle);
+                    
+                    setTimeout(() => {
+                        sendCommand(CMD_FORWARD);
+                        i++;
+                        logDebug(`Placing spiral domino ${i} of ${count}, angle: ${angle}°`);
+                        patternTimeout = setTimeout(layNextDomino, 1500);
+                    }, 300);
+                } else {
+                    patternRunning = false;
+                    sendSteeringCommand(90);
+                    logDebug('Pattern complete');
+                }
+            }
+            
+            layNextDomino();
+        }
+        
+        function runCirclePattern() {
+            if (patternRunning) return;
+            stopPattern();
+            
+            const count = parseInt(dominoCountSlider.value);
+            logDebug(`Starting circle pattern with ${count} dominos`);
+            
+            patternRunning = true;
+            let i = 0;
+            
+            function layNextDomino() {
+                if (i < count && patternRunning) {
+                    // Fixed angle for circle
+                    sendSteeringCommand(70);
+                    
+                    setTimeout(() => {
+                        sendCommand(CMD_FORWARD);
+                        i++;
+                        logDebug(`Placing circle domino ${i} of ${count}`);
+                        patternTimeout = setTimeout(layNextDomino, 1500);
+                    }, 300);
+                } else {
+                    patternRunning = false;
+                    sendSteeringCommand(90);
+                    logDebug('Pattern complete');
+                }
+            }
+            
+            layNextDomino();
+        }
+        
+        function runCustomPattern() {
+            alert('To create a custom pattern, modify the code in the runCustomPattern() function.');
+            logDebug('Custom pattern function needs to be implemented');
+        }
+        
+        function stopPattern() {
+            if (patternTimeout) {
+                clearTimeout(patternTimeout);
+                patternTimeout = null;
+            }
+            patternRunning = false;
+            sendCommand(CMD_STOP);
+            logDebug('Pattern stopped');
+        }
+        
+        function clearDebugLog() {
+            document.getElementById('debugLog').innerHTML = '';
+            logDebug('Log cleared');
+        }
+        
+        function logDebug(message) {
+            if (!DEBUG_MODE) return;
+            
+            const debugLog = document.getElementById('debugLog');
+            const time = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('p');
+            logEntry.textContent = `${time}: ${message}`;
+            debugLog.appendChild(logEntry);
+            debugLog.scrollTop = debugLog.scrollHeight;
+            
+            console.log(message);
+        }
+        
+        function testConnection() {
+            if (!isConnected) {
+                logDebug('Not connected to device');
+                return;
+            }
+            
+            logDebug('Testing connection...');
+            sendCommand(CMD_STOP);
+            setTimeout(() => logDebug('Connection test complete'), 500);
+        }
+        
         function toggleFirebreak() {
             const btnFirebreak = document.getElementById('btnFirebreak');
             const currentState = btnFirebreak.getAttribute('data-state');
@@ -222,6 +723,8 @@
                 indicator.classList.remove('connected');
                 status.textContent = 'Disconnected';
             }
+            
+            logDebug(connected ? 'Connected to device' : 'Device disconnected');
         }
 
         function updateDominosCount(count) {
@@ -245,7 +748,7 @@
 
         async function connectToDevice() {
             try {
-                if (DEBUG_MODE) console.log('Requesting Bluetooth Device...');
+                logDebug('Requesting Bluetooth Device...');
                 bluetoothDevice = await navigator.bluetooth.requestDevice({
                     filters: [
                         { services: [BLUETOOTH_SERVICE_UUID] },
@@ -255,17 +758,17 @@
                     optionalServices: [BLUETOOTH_SERVICE_UUID]
                 });
                 
-                if (DEBUG_MODE) console.log('Connected to device:', bluetoothDevice.name);
+                logDebug('Connected to device: ' + bluetoothDevice.name);
                 
                 bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
                 
-                if (DEBUG_MODE) console.log('Connecting to GATT Server...');
+                logDebug('Connecting to GATT Server...');
                 const server = await bluetoothDevice.gatt.connect();
                 
-                if (DEBUG_MODE) console.log('Getting Service...');
+                logDebug('Getting Service...');
                 const service = await server.getPrimaryService(BLUETOOTH_SERVICE_UUID);
                 
-                if (DEBUG_MODE) console.log('Getting Characteristic...');
+                logDebug('Getting Characteristic...');
                 bluetoothCharacteristic = await service.getCharacteristic(BLUETOOTH_CHARACTERISTIC_UUID);
                 
                 // Enable notifications to receive data from Arduino
@@ -273,7 +776,7 @@
                 bluetoothCharacteristic.addEventListener('characteristicvaluechanged', handleNotification);
                 
                 updateConnectionStatus(true);
-                if (DEBUG_MODE) console.log('Ready to communicate with the device!');
+                logDebug('Ready to communicate with the device!');
                 
                 // Request initial status
                 sendCommand(CMD_STOP);
@@ -281,21 +784,22 @@
                 console.error('Connection error:', error);
                 alert('Error connecting to device: ' + error.message);
                 updateConnectionStatus(false);
+                logDebug('Connection failed: ' + error.message);
             }
         }
 
         function onDisconnected() {
-            if (DEBUG_MODE) console.log('Device disconnected');
+            logDebug('Device disconnected');
             updateConnectionStatus(false);
         }
 
         function handleNotification(event) {
             const value = new TextDecoder().decode(event.target.value);
-            if (DEBUG_MODE) console.log('Received data:', value);
+            logDebug('Received data: ' + value);
             
             // Parse the status message from Arduino
-            // Format: S:154,F:0,A:90
-            // (Dominoes remaining, Firebreak mode, Steering angle)
+            // Format: S:154,F:0,A:90,P:0
+            // (Dominoes remaining, Firebreak mode, Steering angle, Precise mode)
             
             if (value.startsWith('S:')) {
                 const parts = value.split(',');
@@ -326,27 +830,39 @@
                         document.getElementById('steeringSlider').value = angle;
                     }
                 }
+                
+                // Extract precise mode
+                if (parts.length > 3) {
+                    const precisePart = parts[3];
+                    if (precisePart && precisePart.startsWith('P:')) {
+                        const mode = precisePart.substring(2) === '1';
+                        preciseMode = mode;
+                        document.getElementById('precisePositioning').checked = mode;
+                        document.getElementById('positionModeStatus').textContent = mode ? 'Precise' : 'Standard';
+                    }
+                }
             }
         }
 
         async function sendCommand(command) {
             if (!isConnected || !bluetoothCharacteristic) {
-                console.warn('Not connected to device');
+                logDebug('Not connected to device');
                 return;
             }
             
             try {
-                if (DEBUG_MODE) console.log('Sending command:', command);
+                logDebug('Sending command: ' + command);
                 const encoder = new TextEncoder();
                 await bluetoothCharacteristic.writeValue(encoder.encode(command));
             } catch (error) {
                 console.error('Error sending command:', error);
+                logDebug('Error sending command: ' + error.message);
             }
         }
 
         async function sendSteeringCommand(angle) {
             if (!isConnected || !bluetoothCharacteristic) {
-                console.warn('Not connected to device');
+                logDebug('Not connected to device');
                 return;
             }
             
@@ -355,11 +871,46 @@
                 const formattedAngle = angle.toString().padStart(3, '0');
                 const command = CMD_STEERING + formattedAngle;
                 
-                if (DEBUG_MODE) console.log('Sending steering command:', command);
+                logDebug('Sending steering command: ' + command);
                 const encoder = new TextEncoder();
                 await bluetoothCharacteristic.writeValue(encoder.encode(command));
             } catch (error) {
                 console.error('Error sending steering command:', error);
+                logDebug('Error sending steering command: ' + error.message);
+            }
+        }
+        
+        async function sendSpeedCommand(speed) {
+            if (!isConnected || !bluetoothCharacteristic) {
+                return;
+            }
+            
+            try {
+                const formattedSpeed = speed.toString().padStart(3, '0');
+                const command = CMD_SPEED + formattedSpeed;
+                
+                logDebug('Sending speed command: ' + command);
+                const encoder = new TextEncoder();
+                await bluetoothCharacteristic.writeValue(encoder.encode(command));
+            } catch (error) {
+                console.error('Error sending speed command:', error);
+            }
+        }
+        
+        async function sendTurnAmountCommand(amount) {
+            if (!isConnected || !bluetoothCharacteristic) {
+                return;
+            }
+            
+            try {
+                const formattedAmount = amount.toString().padStart(3, '0');
+                const command = CMD_TURN_AMOUNT + formattedAmount;
+                
+                logDebug('Sending turn amount command: ' + command);
+                const encoder = new TextEncoder();
+                await bluetoothCharacteristic.writeValue(encoder.encode(command));
+            } catch (error) {
+                console.error('Error sending turn amount command:', error);
             }
         }
 
@@ -367,7 +918,13 @@
         if (!navigator.bluetooth) {
             alert('Web Bluetooth is not supported in your browser. Please use Chrome, Edge, or another compatible browser.');
             document.getElementById('connectBtn').disabled = true;
+            logDebug('Web Bluetooth API not supported in this browser');
+        } else {
+            logDebug('Web Bluetooth API is supported');
         }
+        
+        // Initialize
+        logDebug('Domino Machine Controller initialized');
     </script>
 </body>
 </html>

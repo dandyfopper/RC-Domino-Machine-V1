@@ -19,9 +19,20 @@ This version replaces the deprecated Blynk app with standard Bluetooth control
 const byte carouselStackHeight = 22;  // How many dominoes are in a single fully stocked vertical stack on the carousel
 const byte carouselQtyStacks = 7;     // How many vertical stacks are on the carousel
 
-const byte amountToTurn = 40;          // How extreme the steering angle should be (1-90)
-const byte carouselServoNeutral = 91;  // Neutral position for continuous rotation servo
-const byte dcMotorSpeed = 120;         // Speed/power of the DC motor
+byte amountToTurn = 40;          // How extreme the steering angle should be (1-90) - no longer const so it can be modified
+const byte carouselServoNeutral = 90;  // Changed from 91 to exact 90 for neutral position
+byte dcMotorSpeed = 120;         // Speed/power of the DC motor (changed from const to allow adjustment)
+
+// Add new variables for servo stabilization
+unsigned long lastCarouselServoUpdate = 0;
+const unsigned long SERVO_STABILIZATION_INTERVAL = 1000; // 1 second
+boolean servoNeedsStabilizing = false;
+
+// New variables for improved movement
+const int ACCELERATION_STEP = 5;      // How quickly to ramp up motor speed
+const int DECELERATION_DISTANCE = 50; // When to start slowing down (in ms)
+const int MIN_MOTOR_SPEED = 70;       // Minimum speed that keeps the motor running
+boolean precisePositioning = false;    // Toggle for precise positioning mode
 
 // Bluetooth communication
 SoftwareSerial BTSerial(12, 13);  // RX, TX pins for HC-05/HC-06 Bluetooth module
@@ -73,6 +84,11 @@ int adc_key_in = 0;
 #define CMD_FIREBREAK_ON 'O'   // Enable firebreak
 #define CMD_FIREBREAK_OFF 'X'  // Disable firebreak
 #define CMD_STEERING 'T'       // Set steering angle (followed by 3-digit angle)
+#define CMD_PRECISE_ON 'P'     // Enable precise positioning mode
+#define CMD_PRECISE_OFF 'N'    // Disable precise positioning mode
+#define CMD_SPEED 'V'          // Set motor speed (followed by 3-digit speed)
+#define CMD_TURN_AMOUNT 'A'    // Set turn amount (followed by 3-digit angle)
+#define CMD_EMERGENCY 'E'      // Emergency stop
 
 // Read the buttons on LCD shield
 int read_LCD_buttons() {
@@ -102,10 +118,15 @@ void setup() {
   lcd.begin(16, 2);
   lcd.setCursor(0, 0);
 
-  // Initialize servos
+  // Initialize servos with more precise positioning
   steeringServo.attach(11);
   carouselServo.attach(2);
-  carouselServo.write(carouselServoNeutral);
+  
+  // Make sure carousel servo is properly initialized at exact neutral
+  for (int i = 0; i < 3; i++) {
+    carouselServo.write(carouselServoNeutral);
+    delay(100);
+  }
   steeringServo.write(90);
 
   // Initialize motor control pins
@@ -153,6 +174,11 @@ void loop() {
   // Check for Bluetooth commands if in Bluetooth mode
   if (bluetoothControlled) {
     handleBluetooth();
+    
+    // Periodically check and correct carousel position
+    if (millis() % 30000 == 0) { // Every 30 seconds
+      centerCarouselServo();
+    }
     return;
   }
 
@@ -192,6 +218,13 @@ void loop() {
 
     case btnNONE:
       break;
+  }
+
+  // Add servo stabilization routine
+  if (servoNeedsStabilizing && millis() - lastCarouselServoUpdate > SERVO_STABILIZATION_INTERVAL) {
+    carouselServo.write(carouselServoNeutral);
+    lastCarouselServoUpdate = millis();
+    servoNeedsStabilizing = false;
   }
 }
 
@@ -242,6 +275,31 @@ void handleBluetooth() {
       case CMD_FIREBREAK_OFF:
         firebreak(false);
         break;
+        
+      case CMD_PRECISE_ON:
+        precisePositioning = true;
+        updateScreen(0, 0);
+        sendStatus();
+        break;
+        
+      case CMD_PRECISE_OFF:
+        precisePositioning = false;
+        updateScreen(0, 0);
+        sendStatus();
+        break;
+        
+      case CMD_EMERGENCY:
+        // Emergency stop all operations
+        command = CMD_STOP;
+        steeringServo.write(90);
+        carouselServo.write(carouselServoNeutral);
+        digitalWrite(in1, LOW);
+        digitalWrite(in2, LOW);
+        updateScreen(0, 0);
+        printToLCD(F("EMERGENCY STOP"), F(""));
+        delay(1000);
+        updateScreen(0, 0);
+        break;
 
       case CMD_STEERING:
         // Read 3 more characters to get the angle (000-180)
@@ -270,6 +328,60 @@ void handleBluetooth() {
           }
         }
         break;
+        
+      case CMD_SPEED:
+        // Read 3 more characters to get the speed (050-255)
+        startTime = millis();
+        while ((BTSerial.available() < 3) && ((millis() - startTime) < 500)) {
+          // Wait for data
+          delay(5);
+        }
+
+        if (BTSerial.available() >= 3) {
+          char val1 = BTSerial.read();
+          char val2 = BTSerial.read();
+          char val3 = BTSerial.read();
+
+          if (isDigit(val1) && isDigit(val2) && isDigit(val3)) {
+            int speed = (val1 - '0') * 100 + (val2 - '0') * 10 + (val3 - '0');
+
+            // Limit speed to valid range
+            if (speed >= 50 && speed <= 255) {
+              dcMotorSpeed = speed;
+              char buf[10];
+              sprintf(buf, "Speed:%d", dcMotorSpeed);
+              updateScreenChar(buf, 0);
+            }
+          }
+        }
+        break;
+        
+      case CMD_TURN_AMOUNT:
+        // Read 3 more characters to get the turn amount (010-090)
+        startTime = millis();
+        while ((BTSerial.available() < 3) && ((millis() - startTime) < 500)) {
+          // Wait for data
+          delay(5);
+        }
+
+        if (BTSerial.available() >= 3) {
+          char val1 = BTSerial.read();
+          char val2 = BTSerial.read();
+          char val3 = BTSerial.read();
+
+          if (isDigit(val1) && isDigit(val2) && isDigit(val3)) {
+            int amount = (val1 - '0') * 100 + (val2 - '0') * 10 + (val3 - '0');
+
+            // Limit amount to valid range
+            if (amount >= 10 && amount <= 90) {
+              amountToTurn = amount;
+              char buf[12];
+              sprintf(buf, "Turn:%d", amountToTurn);
+              updateScreenChar(buf, 0);
+            }
+          }
+        }
+        break;
 
       default:
         break;
@@ -282,8 +394,9 @@ void handleBluetooth() {
 
 // Send machine status to Bluetooth client
 void sendStatus() {
-  char statusBuffer[20]; // Buffer for formatting status message
-  sprintf(statusBuffer, "S:%d,F:%d,A:%d", remainingInCarousel, firebreakMode ? 1 : 0, steeringAngle);
+  char statusBuffer[30]; // Extended buffer for more status information
+  sprintf(statusBuffer, "S:%d,F:%d,A:%d,P:%d", remainingInCarousel, 
+          firebreakMode ? 1 : 0, steeringAngle, precisePositioning ? 1 : 0);
 
   // Send status string through Bluetooth
   BTSerial.println(statusBuffer);
@@ -413,18 +526,42 @@ void updateScreenChar(const char* text, byte remainingTurns) {
   }
 }
 
+// Enhanced domino laying function with improved positioning
 void layDomino(byte remainingDominoes, char directionOfTravel) {
   ejectorSwitchState = digitalRead(ejectorSwitch);
-  while (ejectorSwitchState == HIGH) {
-    moveMachine(10, directionOfTravel);
+  
+  // Enhanced detection loop with timeouts and better error handling
+  unsigned long startTime = millis();
+  boolean ejectorDetected = false;
+  
+  // Try to find the ejector position
+  while (!ejectorDetected && (millis() - startTime < 2000)) {
+    moveMachine(precisePositioning ? 5 : 10, directionOfTravel);
     ejectorSwitchState = digitalRead(ejectorSwitch);
+    if (ejectorSwitchState == LOW) {
+      ejectorDetected = true;
+    }
   }
-  moveMachine(300, directionOfTravel);
+  
+  if (ejectorDetected) {
+    // Move forward a bit more to perfectly position the domino
+    moveMachine(precisePositioning ? 290 : 300, directionOfTravel);
+  } else {
+    // If we couldn't detect the ejector switch, try emergency procedure
+    printToLCD(F("Warning"), F("Ejector issue"));
+    delay(500);
+    moveMachine(250, directionOfTravel); // Just move a bit and hope for the best
+  }
 }
 
+// Improved moveMachine function with acceleration/deceleration for smoother movements
 void moveMachine(int distance, char directionOfTravel) {
-  analogWrite(enA, dcMotorSpeed);
-
+  int currentSpeed = MIN_MOTOR_SPEED;
+  long startTime = millis();
+  long endTime = startTime + distance;
+  long currentTime;
+  
+  // Set motor direction
   if (directionOfTravel == 'F') {
     digitalWrite(in1, HIGH);
     digitalWrite(in2, LOW);
@@ -432,12 +569,40 @@ void moveMachine(int distance, char directionOfTravel) {
     digitalWrite(in1, LOW);
     digitalWrite(in2, HIGH);
   }
-
-  delay(distance);
-
+  
+  // Start with lower speed
+  analogWrite(enA, currentSpeed);
+  
+  // Gradual acceleration and deceleration loop
+  while ((currentTime = millis()) < endTime) {
+    // Calculate how far into the movement we are (0.0 to 1.0)
+    float progress = float(currentTime - startTime) / float(distance);
+    
+    // Accelerate during first 30% of movement
+    if (progress < 0.3 && currentSpeed < dcMotorSpeed) {
+      currentSpeed = min(currentSpeed + ACCELERATION_STEP, dcMotorSpeed);
+    }
+    // Decelerate during last 30% of movement
+    else if (progress > 0.7 && currentSpeed > MIN_MOTOR_SPEED) {
+      currentSpeed = max(currentSpeed - ACCELERATION_STEP, MIN_MOTOR_SPEED);
+    }
+    
+    analogWrite(enA, currentSpeed);
+    
+    // Small delay to allow speed changes to take effect
+    delay(5);
+  }
+  
+  // Stop the motor
   digitalWrite(in1, LOW);
   digitalWrite(in2, LOW);
-  carouselServo.write(carouselServoNeutral);  // Keep carousel servo steady
+  
+  // Ensure carousel servo is at neutral
+  carouselServo.write(carouselServoNeutral);
+  
+  // Mark that servo might need stabilizing later
+  servoNeedsStabilizing = true;
+  lastCarouselServoUpdate = millis();
 }
 
 void moveCarousel(byte numberOfTurns) {
@@ -451,28 +616,72 @@ void moveCarousel(byte numberOfTurns) {
 
   byte i = numberOfTurns;
   while (i > 0) {
+    // Reset switch state
     carouselSwitchState = digitalRead(carouselSwitch);
-
-    while (carouselSwitchState == HIGH) {  // Not engaged
-      carouselServo.write(105);
+    
+    // First ensure we're at a known position by consistently rotating until switch contact
+    unsigned long positioningTimeout = millis() + 5000; // 5 second timeout
+    boolean switchFound = false;
+    
+    // Move carousel until switch is engaged
+    while (!switchFound && millis() < positioningTimeout) {
+      carouselServo.write(105); // Consistent rotation speed
+      delay(10); // Short delay for stability
       carouselSwitchState = digitalRead(carouselSwitch);
-      // Allow periodic Bluetooth checks
-      if (bluetoothControlled && (random(100) > 95)) {
-        BTSerial.read(); // Just clear any waiting data, don't process yet
+      
+      if (carouselSwitchState == LOW) { // Switch engaged
+        switchFound = true;
+        // Stop carousel immediately
+        carouselServo.write(carouselServoNeutral);
+        delay(100); // Let it settle
       }
     }
-
-    while (carouselSwitchState == LOW) {  // Engaged
+    
+    if (!switchFound) {
+      // Safety procedure if switch not found
+      printToLCD(F("Carousel error"), F("Check alignment"));
+      delay(1000);
+      // Try to recover
+      carouselServo.write(carouselServoNeutral);
+      delay(500);
+      i--; // Continue to next turn attempt
+      continue;
+    }
+    
+    // Now rotate past the switch
+    positioningTimeout = millis() + 2000; // 2 second timeout
+    while (carouselSwitchState == LOW && millis() < positioningTimeout) {
       carouselServo.write(105);
+      delay(10);
       carouselSwitchState = digitalRead(carouselSwitch);
-      // Allow periodic Bluetooth checks
-      if (bluetoothControlled && (random(100) > 95)) {
-        BTSerial.read(); // Just clear any waiting data, don't process yet
+    }
+    
+    // Continue rotation until we hit the switch again (one complete stack)
+    positioningTimeout = millis() + 5000; // 5 second timeout for full rotation
+    switchFound = false;
+    
+    while (!switchFound && millis() < positioningTimeout) {
+      carouselServo.write(105);
+      delay(10);
+      carouselSwitchState = digitalRead(carouselSwitch);
+      
+      // Allow periodic Bluetooth checks but don't let them interfere
+      if (bluetoothControlled && (millis() % 200 == 0)) {
+        while (BTSerial.available()) {
+          BTSerial.read(); // Clear buffer without processing
+        }
+      }
+      
+      if (carouselSwitchState == LOW) {
+        switchFound = true;
       }
     }
-
+    
+    // Stop carousel movement
     carouselServo.write(carouselServoNeutral);
-
+    delay(200); // Allow momentum to settle
+    
+    // Fine adjustment to position the stack correctly
     if (i == 1) {
       bumpCarousel(170);
     }
@@ -485,14 +694,27 @@ void moveCarousel(byte numberOfTurns) {
     sendStatus();
   }
   
+  // Make sure carousel is completely stopped
+  carouselServo.write(carouselServoNeutral);
+  delay(100);
+  
   carouselBusy = false; // Clear busy flag
 }
 
 void bumpCarousel(int bumpSize) {
   delay(100);
-  carouselServo.write(78);
-  delay(bumpSize);  // Bump
-  carouselServo.write(carouselServoNeutral);
+  // More controlled bump with ramped movement
+  for (int i = 88; i >= 78; i--) {
+    carouselServo.write(i);
+    delay(5);
+  }
+  delay(bumpSize - 50); // Adjusted time for bump
+  
+  // Gradually return to neutral
+  for (int i = 78; i <= carouselServoNeutral; i++) {
+    carouselServo.write(i);
+    delay(5);
+  }
 }
 
 void firebreak(bool toggle) {
@@ -607,6 +829,37 @@ void bluetoothControl() {
 
     // Short delay to prevent tight loop
     delay(10);
+  }
+}
+
+void centerCarouselServo() {
+  // This function helps prevent sporadic rotation by ensuring the servo is centered
+  // Call this periodically during idle times to keep the carousel steady
+  
+  // Only perform centering if carousel isn't busy with other operations
+  if (!carouselBusy) {
+    // First detect if the servo has drifted from neutral
+    carouselSwitchState = digitalRead(carouselSwitch);
+    
+    // If switch is engaged during idle, servo has drifted
+    if (carouselSwitchState == LOW) {
+      // Small pulse to center the carousel
+      carouselServo.write(95);  // Small movement in one direction
+      delay(50);
+      carouselServo.write(carouselServoNeutral);
+      delay(100);
+      carouselServo.write(85);  // Small movement in opposite direction
+      delay(50);
+      carouselServo.write(carouselServoNeutral);
+      
+      printToLCD(F("Auto-centering"), F("carousel"));
+      delay(500);
+      
+      // Update screen to previous state
+      if (bluetoothControlled) {
+        updateScreen(0, 0);
+      }
+    }
   }
 }
 
